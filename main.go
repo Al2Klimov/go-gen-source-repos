@@ -3,19 +3,17 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
+	"regexp"
 	"sort"
 	"strings"
 )
 
-var errGoListBadOut = errors.New("got bad output from 'go list -json'")
 var errNonGithub = errors.New("can't derive repository URL from a package not hosted on github.com")
+var projectName = regexp.MustCompile(`(?m)^ *name = "(.+?)"$`)
 
 func main() {
 	if errGR := genRepos(os.Args[1]); errGR != nil {
@@ -68,44 +66,15 @@ func genRepos(packag string) error {
 }
 
 func scanDeps(packag string) (map[string]struct{}, error) {
-	cmd := exec.Command("go", "list", "-json", packag)
-	outBuf := bytes.Buffer{}
-
-	cmd.Stdout = &outBuf
-	cmd.Stderr = os.Stderr
-
-	if errCR := cmd.Run(); errCR != nil {
-		return nil, errCR
+	gopkgLock, errRGL := ioutil.ReadFile("Gopkg.lock")
+	if errRGL != nil {
+		return nil, errRGL
 	}
 
-	var goList interface{}
+	pkgs := make(map[string]struct{})
 
-	if errJUM := json.Unmarshal(outBuf.Bytes(), &goList); errJUM != nil {
-		return nil, errJUM
-	}
-
-	var pkgs map[string]struct{}
-
-	if goListMap, goListIsMap := goList.(map[string]interface{}); goListIsMap {
-		if deps, hasDeps := goListMap["Deps"]; hasDeps {
-			if depsArray, depsIsArray := deps.([]interface{}); depsIsArray {
-				pkgs = make(map[string]struct{}, len(depsArray))
-
-				for _, pkg := range depsArray {
-					if pkgString, pkgIsString := pkg.(string); pkgIsString {
-						pkgs[pkgString] = struct{}{}
-					} else {
-						return nil, errGoListBadOut
-					}
-				}
-			} else {
-				return nil, errGoListBadOut
-			}
-		} else {
-			pkgs = map[string]struct{}{}
-		}
-	} else {
-		return nil, errGoListBadOut
+	for _, name := range projectName.FindAllSubmatch(gopkgLock, -1) {
+		pkgs[string(name[1])] = struct{}{}
 	}
 
 	return pkgs, nil
