@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var errNonGithub = errors.New("can't derive repository URL from a package not hosted on github.com")
+var errNonGithub = errors.New("can't derive repository URL from a package not hosted on github.com or gopkg.in")
 var projectName = regexp.MustCompile(`(?m)^ *name = "(.+?)"$`)
 
 func main() {
@@ -40,7 +40,7 @@ func genRepos(packag string) error {
 			switch depParts[0] {
 			case "golang.org":
 				break
-			case "github.com":
+			case "github.com", "gopkg.in":
 				uniqueUrls["https://"+strings.Join(depParts[:3], "/")] = struct{}{}
 			default:
 				return errNonGithub
