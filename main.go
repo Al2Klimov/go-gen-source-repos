@@ -3,10 +3,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -31,7 +33,10 @@ func genRepos(packag string) error {
 	deps[packag] = struct{}{}
 	deps["github.com/golang/go"] = struct{}{}
 
-	uniqueUrls := map[string]struct{}{}
+	uniqueUrls, errLCRU := loadCustomRepoUrls(".")
+	if errLCRU != nil {
+		return errLCRU
+	}
 
 	for dep := range deps {
 		depParts := strings.SplitN(dep, "/", 4)
@@ -78,4 +83,41 @@ func scanDeps(packag string) (map[string]struct{}, error) {
 	}
 
 	return pkgs, nil
+}
+
+func loadCustomRepoUrls(rootDir string) (map[string]struct{}, error) {
+	allUrls := make(map[string]struct{})
+
+	{
+		rawUrls, errRF := ioutil.ReadFile(path.Join(rootDir, "GithubcomAl2klimovGo_gen_source_repos.txt"))
+		if errRF == nil {
+			for _, line := range bytes.Split(rawUrls, []byte{'\n'}) {
+				if len(line) > 0 {
+					allUrls[string(line)] = struct{}{}
+				}
+			}
+		} else if !os.IsNotExist(errRF) {
+			return nil, errRF
+		}
+	}
+
+	entries, errRD := ioutil.ReadDir(rootDir)
+	if errRD != nil {
+		return nil, errRD
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			urls, errLCRU := loadCustomRepoUrls(path.Join(rootDir, entry.Name()))
+			if errLCRU != nil {
+				return nil, errLCRU
+			}
+
+			for url := range urls {
+				allUrls[url] = struct{}{}
+			}
+		}
+	}
+
+	return allUrls, nil
 }
