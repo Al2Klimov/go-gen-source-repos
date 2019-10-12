@@ -71,7 +71,11 @@ func genRepos(packag string) error {
 func scanDeps(packag string) (map[string]struct{}, error) {
 	gopkgLock, errRGL := ioutil.ReadFile("Gopkg.lock")
 	if errRGL != nil {
-		return nil, errRGL
+		if os.IsNotExist(errRGL) {
+			gopkgLock = nil
+		} else {
+			return nil, errRGL
+		}
 	}
 
 	pkgs := make(map[string]struct{})
