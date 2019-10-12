@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"sort"
@@ -68,20 +70,48 @@ func genRepos(packag string) error {
 	)
 }
 
+var goListJson = regexp.MustCompile(`(?ms)^{.*?^}`)
+
 func scanDeps(packag string) (map[string]struct{}, error) {
-	gopkgLock, errRGL := ioutil.ReadFile("Gopkg.lock")
-	if errRGL != nil {
-		if os.IsNotExist(errRGL) {
-			gopkgLock = nil
-		} else {
-			return nil, errRGL
+	pkgs := map[string]struct{}{}
+
+	{
+		gopkgLock, errRGL := ioutil.ReadFile("Gopkg.lock")
+		if errRGL != nil {
+			if os.IsNotExist(errRGL) {
+				gopkgLock = nil
+			} else {
+				return nil, errRGL
+			}
+		}
+
+		for _, name := range projectName.FindAllSubmatch(gopkgLock, -1) {
+			pkgs[string(name[1])] = struct{}{}
 		}
 	}
 
-	pkgs := make(map[string]struct{})
+	if _, errStat := os.Stat("go.mod"); errStat == nil || !os.IsNotExist(errStat) {
+		cmd := exec.Command("go", "list", "-json", "-m", "all")
+		var outBuf bytes.Buffer
 
-	for _, name := range projectName.FindAllSubmatch(gopkgLock, -1) {
-		pkgs[string(name[1])] = struct{}{}
+		cmd.Stdin = nil
+		cmd.Stdout = &outBuf
+		cmd.Stderr = os.Stderr
+
+		if errRun := cmd.Run(); errRun != nil {
+			return nil, errRun
+		}
+
+		for _, jsn := range goListJson.FindAll(outBuf.Bytes(), -1) {
+			var data struct{ Path string }
+			if errJU := json.Unmarshal(jsn, &data); errJU != nil {
+				return nil, errJU
+			}
+
+			if data.Path != "" {
+				pkgs[data.Path] = struct{}{}
+			}
+		}
 	}
 
 	return pkgs, nil
