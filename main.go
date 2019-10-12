@@ -18,7 +18,12 @@ var errNonGithub = errors.New("can't derive repository URL from a package not ho
 var projectName = regexp.MustCompile(`(?m)^ *name = "(.+?)"$`)
 
 func main() {
-	if errGR := genRepos(os.Args[1]); errGR != nil {
+	packag := ""
+	if len(os.Args) > 1 {
+		packag = os.Args[1]
+	}
+
+	if errGR := genRepos(packag); errGR != nil {
 		fmt.Println(errGR.Error())
 		os.Exit(1)
 	}
@@ -30,7 +35,10 @@ func genRepos(packag string) error {
 		return errSD
 	}
 
-	deps[packag] = struct{}{}
+	if packag != "" {
+		deps[packag] = struct{}{}
+	}
+
 	deps["github.com/golang/go"] = struct{}{}
 
 	uniqueUrls, errLCRU := loadCustomRepoUrls(".")
