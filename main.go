@@ -47,16 +47,20 @@ func genRepos(packag string) error {
 	}
 
 	for dep := range deps {
-		depParts := strings.SplitN(dep, "/", 4)
+		if dep == "google.golang.org/appengine" {
+			uniqueUrls["https://github.com/golang/appengine"] = struct{}{}
+		} else {
+			depParts := strings.SplitN(dep, "/", 4)
 
-		if strings.Contains(depParts[0], ".") {
-			switch depParts[0] {
-			case "golang.org":
-				break
-			case "github.com", "gopkg.in":
-				uniqueUrls[strings.TrimRight("https://"+strings.Join(depParts[:3], "/"), "/")] = struct{}{}
-			default:
-				return errNonGithub
+			if strings.Contains(depParts[0], ".") {
+				switch depParts[0] {
+				case "golang.org":
+					break
+				case "github.com", "gopkg.in":
+					uniqueUrls[strings.TrimRight("https://"+strings.Join(depParts[:3], "/"), "/")] = struct{}{}
+				default:
+					return errNonGithub
+				}
 			}
 		}
 	}
