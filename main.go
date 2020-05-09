@@ -56,7 +56,7 @@ func genRepos(packag string) error {
 				switch depParts[0] {
 				case "golang.org":
 					break
-				case "github.com", "gopkg.in":
+				case "github.com", "gopkg.in", "moul.io":
 					uniqueUrls[strings.TrimRight("https://"+strings.Join(depParts[:3], "/"), "/")] = struct{}{}
 				default:
 					return errNonGithub
