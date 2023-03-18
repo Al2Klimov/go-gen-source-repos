@@ -5,7 +5,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,7 +15,6 @@ import (
 	"strings"
 )
 
-var errNonGithub = errors.New("can't derive repository URL from a package not hosted on github.com or gopkg.in")
 var projectName = regexp.MustCompile(`(?m)^ *name = "(.+?)"$`)
 
 func main() {
@@ -60,7 +58,7 @@ func genRepos(packag string) error {
 			case "google.golang.org":
 				uniqueUrls["https://github.com/golang/"+depParts[1]] = struct{}{}
 			default:
-				return errNonGithub
+				uniqueUrls["https://pkg.go.dev/"+dep] = struct{}{}
 			}
 		}
 	}
