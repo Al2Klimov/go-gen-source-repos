@@ -32,7 +32,7 @@ func main() {
 }
 
 func genRepos(packag string) error {
-	deps, errSD := scanDeps(packag)
+	deps, errSD := scanDeps()
 	if errSD != nil {
 		return errSD
 	}
@@ -84,7 +84,7 @@ func genRepos(packag string) error {
 
 var goListJson = regexp.MustCompile(`(?ms)^{.*?^}`)
 
-func scanDeps(packag string) (map[string]struct{}, error) {
+func scanDeps() (map[string]struct{}, error) {
 	pkgs := map[string]struct{}{}
 
 	{
